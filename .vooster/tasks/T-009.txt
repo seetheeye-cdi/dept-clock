@@ -1,0 +1,63 @@
+# 알림톡 발송 크론/서버리스 함수 구현(매일 09:00)
+
+**Task ID:** T-009
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 9/10
+**Dependencies:** T-008, T-004
+
+## Description
+
+# 목적
+매일 09:00 KST, 활성 구독자에게 당일 부채 요약을 카카오 알림톡으로 자동 발송한다.
+
+## 요구사항
+- 스케줄: 09:00 Asia/Seoul, 수동 트리거 지원(관리자 호출).
+- 대상: `kakao_subscribers.status='ACTIVE'` 전체.
+- 메시지: 템플릿 변수 치환(총부채, 1일 증가분/속도, 링크).
+- 실패 처리: 배치/재시도/로그 적재.
+
+## 구현 상세(설계/라이브러리)
+- Vercel Cron으로 `GET /api/cron/alimtalk` 호출(헤더 토큰 검증).
+- 발송 채널: 네이버 클라우드 SENS 알림톡 v2 API(`POST /alimtalk/v2/services/{serviceId}/messages`).
+- 환경변수: `SENS_ACCESS_KEY`, `SENS_SECRET_KEY`, `SENS_SERVICE_ID`, `KAKAO_PLUS_FRIEND_ID`, `KAKAO_TEMPLATE_CODE`, `CRON_TOKEN`.
+- 서명: SENS 시그니처(HMAC-SHA256) 생성 후 헤더 설정.
+- 배치: 수신자 100명 단위 청크 처리, 실패 건 로그 테이블 `kakao_send_logs`에 적재.
+
+## 의사코드
+```ts
+// app/api/cron/alimtalk/route.ts
+export async function GET(req: Request) {
+  if (req.headers.get('x-cron-token') !== process.env.CRON_TOKEN) return new Response('unauthorized', { status: 401 });
+  const now = new Date();
+  const debt = await (await fetch(`${process.env.BASE_URL}/api/debt-state`)).json();
+  const list = await supa.from('kakao_subscribers').select('phone_e164').eq('status', 'ACTIVE');
+  const chunks = chunk(list.data, 100);
+  for (const c of chunks) {
+    const body = {
+      plusFriendId: process.env.KAKAO_PLUS_FRIEND_ID,
+      templateCode: process.env.KAKAO_TEMPLATE_CODE,
+      messages: c.map(x => ({ to: x.phone_e164, content: { /* 템플릿 변수 */ } }))
+    };
+    const res = await fetch(`https://sens.apigw.ntruss.com/alimtalk/v2/services/${process.env.SENS_SERVICE_ID}/messages`, {
+      method: 'POST', headers: signHeaders('POST', '/alimtalk/v2/services/.../messages'), body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    await supa.from('kakao_send_logs').insert({ batch_size: c.length, response: json, created_at: new Date().toISOString() });
+  }
+  return Response.json({ ok: true });
+}
+
+function signHeaders(method: string, path: string) { /* SENS 시그니처 HMAC 생성 */ }
+```
+
+## 테스트 전략
+- 단위: SENS 서명 함수/요청 바디 구성 테스트.
+- 통합: 샌드박스/드라이런 모드로 1건 발송 성공 확인, 실패시 재시도 로직 검증.
+- 운영 리허설: 비업무 시간대 수동 트리거로 전체 배치 시뮬레이션, 로그 테이블 검증.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z

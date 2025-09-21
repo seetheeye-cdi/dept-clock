@@ -1,0 +1,54 @@
+# 애플리케이션의 전체적인 디자인 아이덴티티를 확립하기 위해 컬러 팔레트와 타이포그래피를 Tailwind CSS 설정 파일에 정의합니다.
+
+**Task ID:** T-001
+**Status:** COMPLETED
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 10/10
+**Dependencies:** None
+
+## Description
+
+### 작업 목표
+Next.js 및 Tailwind CSS 프로젝트의 기본 디자인 시스템을 설정합니다. 제공된 가이드라인에 따라 `tailwind.config.ts` 파일에 컬러 팔레트와 타이포그래피(폰트)를 정의해 주세요. 이 설정은 애플리케이션 전반의 시각적 일관성을 유지하기 위한 기초 작업입니다.
+
+### 요구사항
+
+1.  **파일 위치**: `tailwind.config.ts` 파일을 수정하거나 생성해 주세요.
+2.  **컬러 팔레트**: 지정된 색상 코드를 사용하여 `theme.extend.colors` 내에 다음 색상들을 정의해 주세요.
+    *   **Primary (주요 색상)**: 브랜드의 핵심 색상입니다.
+        *   `primary`: `#FF4C4C` (강조, 경고)
+        *   `'primary-foreground'`: `#FFFFFF` (주요 색상 위의 텍스트)
+    *   **Secondary (보조 색상)**: 보조적인 UI 요소에 사용됩니다.
+        *   `secondary`: `#333333` (카드 배경)
+        *   `'secondary-foreground'`: `#E5E5E5` (보조 색상 위의 텍스트)
+    *   **Accent (강조 색상)**: 클릭 유도(CTA) 버튼 등에 사용됩니다.
+        *   `accent`: `#007AFF` (링크, 버튼)
+        *   `'accent-foreground'`: `#FFFFFF` (강조 색상 위의 텍스트)
+    *   **Grayscale (무채색)**: 배경, 텍스트, 경계선 등 다양한 요소에 사용됩니다.
+        *   `background`: `#121212` (기본 배경)
+        *   `foreground`: `#F5F5F7` (기본 텍스트)
+        *   `muted`: `#888888` (보조 텍스트, 비활성 요소)
+        *   `border`: `#444444` (경계선)
+
+3.  **타이포그래피 및 폰트**: `fontFamily`를 설정하여 기본 폰트를 지정해 주세요.
+    *   **기본 폰트**: Pretendard Variable 폰트를 사용하도록 설정합니다. 시스템에 Pretendard 폰트가 없는 경우를 대비하여 `sans-serif`를 fallback으로 지정합니다.
+    *   **설정 예시**: `fontFamily: { sans: ['Pretendard Variable', 'sans-serif'] }`
+
+4.  **shadcn/ui 호환성**: shadcn/ui의 테마 시스템과 호환되도록 CSS 변수 방식으로 색상을 정의해 주세요. `tailwind.config.ts`의 `theme` 객체 내에 shadcn/ui 기본 설정을 포함시켜 주세요. (예: `container`, `borderRadius` 등)
+
+### 최종 결과물
+수정된 `tailwind.config.ts` 파일의 전체 코드를 제출해 주세요.
+
+MUST Guidelines:
+- only implement what is written in prompt.
+- tidy first.
+
+
+
+  
+
+---
+
+**Created:** 2025-09-20T10:00:21.386Z
+**Updated:** 2025-09-20T10:00:21.386Z

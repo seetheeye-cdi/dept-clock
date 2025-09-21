@@ -1,0 +1,63 @@
+# 카카오톡 알림톡 구독/해지 API 및 DB 설계
+
+**Task ID:** T-008
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 7/10
+**Urgency:** 9/10
+**Dependencies:** T-004
+
+## Description
+
+# 목적
+알림톡 데일리 리포트 수신을 위한 구독/해지 API와 Supabase 저장소를 설계/구현한다.
+
+## 요구사항
+- 엔드포인트: `POST /api/alerts/subscribe`, `POST /api/alerts/unsubscribe`.
+- 입력: 휴대전화 번호(E.164), 마케팅/알림 수신 동의 플래그.
+- 제약: 동일 번호 중복 구독 방지, 해지 시 상태 플래그 전환.
+- 개인정보 보호: 최소 수집, 서버단 유효성 검사, 속도 제한.
+
+## 구현 상세(설계/라이브러리)
+- 테이블: `kakao_subscribers(id uuid pk, phone_e164 text unique not null, phone_hash text unique not null, status text check in('ACTIVE','UNSUBSCRIBED') default 'ACTIVE', consent boolean not null, created_at timestamptz default now(), unsubscribed_at timestamptz)`.
+- 해시: `phone_hash = sha256(salt + phone_e164)` 애플리케이션 레벨(HMAC) 계산으로 중복 검출.
+- 보안: RLS 활성, `status='ACTIVE'` 행 읽기/쓰기 서버 롤만 허용. API 레이트리밋(예: 5 req/min/IP).
+- 검증: `zod`로 E.164 형식 검증, 서버에서 정규화.
+
+## 의사코드
+```ts
+// lib/phone.ts
+export function toE164(raw: string) { /* 국가코드 +82 정규화, 숫자 이외 제거, 선행 0 처리 */ }
+export function phoneHash(e164: string) { return sha256(`${process.env.KAKAO_SALT!}:${e164}`); }
+
+// app/api/alerts/subscribe/route.ts
+export async function POST(req: Request) {
+  const body = await req.json();
+  const parsed = schema.parse(body); // zod
+  const e164 = toE164(parsed.phone);
+  const hash = phoneHash(e164);
+  const { data, error } = await supa.from('kakao_subscribers').upsert({ phone_e164: e164, phone_hash: hash, consent: true, status: 'ACTIVE' }, { onConflict: 'phone_hash' }).select();
+  if (error) return NextResponse.json({ message: 'fail' }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}
+
+// app/api/alerts/unsubscribe/route.ts
+export async function POST(req: Request) {
+  const { phone } = await req.json();
+  const e164 = toE164(phone);
+  const hash = phoneHash(e164);
+  const { error } = await supa.from('kakao_subscribers').update({ status: 'UNSUBSCRIBED', unsubscribed_at: new Date().toISOString() }).eq('phone_hash', hash);
+  if (error) return NextResponse.json({ ok: false }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}
+```
+
+## 테스트 전략
+- 단위: 전화 정규화/E.164 변환, 해시 일관성 테스트.
+- 통합: 구독→중복 구독 방지, 해지→상태 변경 플로우.
+- 보안: RLS 정책 하에서 익명 키로 직접 접근 차단 확인. 레이트리밋 우회 방어 확인.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z

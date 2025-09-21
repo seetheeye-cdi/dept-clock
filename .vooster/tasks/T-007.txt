@@ -1,0 +1,82 @@
+# 부채 데이터 SSE 실시간 반영(속도 변경/재보정)
+
+**Task ID:** T-007
+**Status:** COMPLETED
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 9/10
+**Dependencies:** T-004
+
+## Description
+
+# 목적
+정책 이벤트 등으로 증가 속도가 변할 때 SSE로 프론트에 즉시 반영(재보정)한다.
+
+## 요구사항
+- SSE 엔드포인트: `GET /api/sse/debt`.
+- 이벤트 타입: `rate_change`(증가속도 변경), `rebase`(베이스 총액 재설정).
+- 서버는 Supabase `debt_state` 업데이트를 실시간 구독하고 변경사항을 SSE로 중계.
+- 클라이언트는 EventSource로 수신 후 rAF 카운터의 베이스/속도를 즉시 교체하고 기준 시각 재설정.
+
+## 구현 상세(설계/라이브러리)
+- Route Handler(runtime: nodejs)에서 Supabase Realtime WebSocket 구독(`postgres_changes`).
+- SSE Keep-Alive: 15초마다 주석 핑(`:keepalive`) 송신. CORS 허용.
+- 안정성: 다중 연결에 대한 리소스 정리(채널 leave, ws close). 오류 시 재시도 지수 백오프.
+- 클라이언트: `EventSource` 사용, 네트워크 단절 시 자동 재연결. 수신 시 `t0` 재설정.
+
+## 의사코드
+```ts
+// app/api/sse/debt/route.ts (Node runtime)
+export const runtime = 'nodejs';
+export async function GET() {
+  const stream = new ReadableStream({ start(controller) {
+    const encoder = new TextEncoder();
+    function send(ev: string, data: any) {
+      controller.enqueue(encoder.encode(`event: ${ev}
+`));
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}
+
+`));
+    }
+    const supa = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const channel = supa.channel('debt_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'debt_state' }, (payload) => {
+      const row = (payload.new ?? payload.record) as any;
+      const data = {
+        baseTotal: Number(row.total_debt),
+        perSecondRate: Number(row.per_second_rate),
+        lastUpdatedAt: row.last_updated_at,
+      };
+      send('rebase', data);
+    }).subscribe();
+    const ka = setInterval(() => controller.enqueue(encoder.encode(`:keepalive
+
+`)), 15000);
+    const close = () => { clearInterval(ka); supa.removeChannel(channel); };
+    // @ts-ignore
+    controller._close = close;
+  }, cancel(reason) { /* ensure cleanup */ } });
+  return new Response(stream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'Access-Control-Allow-Origin': '*' } });
+}
+
+// Client
+useEffect(() => {
+  const es = new EventSource('/api/sse/debt');
+  es.addEventListener('rebase', (e: MessageEvent) => {
+    const d = JSON.parse(e.data);
+    setDebtState(d); // baseTotal, perSecondRate 교체
+    t0.current = performance.now();
+  });
+  es.onerror = () => { /* backoff 재연결 */ };
+  return () => es.close();
+}, []);
+```
+
+## 테스트 전략
+- 통합: 테스트 테이블 업데이트 트리거 후 클라이언트가 1초 내 재보정되는지 확인.
+- 회복성: SSE 연결 강제 종료 후 자동 재연결 및 정상 수신.
+- 부하: 동시 1k SSE 세션에서 서버 메모리/핸들 누수 점검.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z

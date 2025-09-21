@@ -1,0 +1,61 @@
+# 공유 기능 구현(카카오톡 링크, OG 메타 태그)
+
+**Task ID:** T-010
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 7/10
+**Urgency:** 8/10
+**Dependencies:** T-004
+
+## Description
+
+# 목적
+메신저/소셜에서 매력적인 미리보기를 제공하고, 카카오톡으로 손쉽게 공유한다.
+
+## 요구사항
+- 카카오 JS SDK 공유 버튼 제공(`Kakao.Share.sendDefault`).
+- OG 메타 태그 구성: 제목/설명/이미지/URL, 트위터 카드 동시 지원.
+- 링크에 UTM 파라미터 부착(소스 추적).
+
+## 구현 상세(설계/라이브러리)
+- SDK 로딩: 클라이언트 사이드에서 지연 로드, `NEXT_PUBLIC_KAKAO_JS_KEY`로 `Kakao.init`.
+- Next.js 15 Metadata API로 `openGraph`/`twitter` 설정. 배포 URL 환경변수 사용.
+- 공유 메시지: 현재 카운터 값을 텍스트로 포함(정적 템플릿 + 동적 치환).
+- 접근성: 버튼 role/aria-label 명시, 키보드 포커스 스타일.
+
+## 의사코드
+```ts
+// lib/kakao.ts
+export async function ensureKakao() {
+  if (typeof window === 'undefined') return null;
+  if (!('Kakao' in window)) await loadScript('https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js');
+  if (!window.Kakao.isInitialized()) window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY!);
+  return window.Kakao;
+}
+
+export async function shareKakao(currentText: string) {
+  const Kakao = await ensureKakao();
+  Kakao.Share.sendDefault({
+    objectType: 'text',
+    text: currentText,
+    link: { mobileWebUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/?utm_source=kakao&utm_medium=share`, webUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/?utm_source=kakao&utm_medium=share` }
+  });
+}
+
+// app/layout.tsx
+export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),
+  openGraph: { title: '국가부채 시계', description: '실시간 국가부채와 1인당 부담', images: ['/og.png'], url: '/' },
+  twitter: { card: 'summary_large_image', title: '국가부채 시계', description: '실시간 국가부채와 1인당 부담', images: ['/og.png'] }
+};
+```
+
+## 테스트 전략
+- 수동: 카카오 링크 공유 실행 후 실제 카톡 미리보기/텍스트 확인.
+- 메타: 페이스북 디버거/카카오 스크랩 도구로 OG 메타 파싱 검증, 캐시 무효화 확인.
+- 접근성/E2E: 키보드로 공유 버튼 초점/클릭 가능, 모바일 브라우저에서 SDK 로딩 안정성 확인.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z

@@ -1,0 +1,101 @@
+# 실시간 부채 카운터 데이터 연동( Supabase → API → 프론트 통합 )
+
+**Task ID:** T-004
+**Status:** COMPLETED
+**Importance:** MUST
+**Complexity:** 7/10
+**Urgency:** 10/10
+**Dependencies:** T-003
+
+## Description
+
+# 목적
+Supabase의 `debt_state` 최신 스냅샷을 Next.js API로 노출하고, React Query로 가져와 T-003의 rAF 카운터에 실제 값을 주입한다.
+
+## 요구사항
+- 사용자는 앱 진입 시 지연 없이 실제 부채 총액과 증가 속도로 카운터가 동작해야 한다.
+- API는 다음 필드를 제공해야 한다: `baseTotal`, `perSecondRate`, `lastUpdatedAt`, `sourceName`, `population`.
+- 탭 비활성/재활성 시 오차를 최소화하기 위해 경과 시간을 기준으로 보정 계산한다.
+- 네트워크 오류 시 마지막 성공 응답을 로컬 캐시에서 복구한다.
+
+## 구현 상세(설계/라이브러리)
+- Next.js 15 Route Handler: `GET /api/debt-state` (runtime: edge). Supabase JS(v2) Fetch 기반 클라이언트 사용.
+- Supabase 테이블 가정 스키마: `debt_state(id uuid pk, total_debt numeric/bigint, per_second_rate numeric, last_updated_at timestamptz, source_name text, population bigint default 50000000)`의 최신 레코드 1건.
+- 서버: RLS 활성 시 서비스 롤 키 사용(서버 전용 환경변수). 응답에 캐싱 헤더 `Cache-Control: s-maxage=5, stale-while-revalidate=30`.
+- 클라이언트: `@tanstack/react-query`로 fetch. 기존 rAF 로직(T-003)을 "베이스값+경과시간*증가속도" 방식으로 교체. 가시성 변경 이벤트로 베이스 타임스탬프 재기준.
+- 형식화: `Intl.NumberFormat('ko-KR')` 사용. 로컬스토리지에 마지막 성공 응답 저장/복구.
+
+## 의사코드
+```ts
+// app/api/debt-state/route.ts (Edge)
+export const runtime = 'edge';
+export async function GET() {
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supa = createClient(url, key, { db: { schema: 'public' } });
+  const { data, error } = await supa
+    .from('debt_state')
+    .select('total_debt, per_second_rate, last_updated_at, source_name, population')
+    .order('last_updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return new Response(JSON.stringify({ message: 'not found' }), { status: 500 });
+  const payload = {
+    baseTotal: Number(data.total_debt),
+    perSecondRate: Number(data.per_second_rate),
+    lastUpdatedAt: data.last_updated_at,
+    sourceName: data.source_name,
+    population: Number(data.population ?? 50000000)
+  };
+  return new Response(JSON.stringify(payload), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 's-maxage=5, stale-while-revalidate=30' }
+  });
+}
+
+// hooks/useDebtState.ts
+export function useDebtState() {
+  return useQuery({
+    queryKey: ['debt-state'],
+    queryFn: async () => {
+      const res = await fetch('/api/debt-state');
+      const json = await res.json();
+      localStorage.setItem('debt-state-cache', JSON.stringify(json));
+      return json as { baseTotal: number; perSecondRate: number; lastUpdatedAt: string; sourceName: string; population: number };
+    },
+    initialData: () => {
+      const raw = localStorage.getItem('debt-state-cache');
+      return raw ? JSON.parse(raw) : undefined;
+    },
+    staleTime: 5000
+  });
+}
+
+// Counter integration
+const t0 = useRef<number>(performance.now());
+const { data } = useDebtState();
+useEffect(() => { t0.current = performance.now(); }, [data?.lastUpdatedAt, data?.baseTotal, data?.perSecondRate]);
+useEffect(() => {
+  let raf = 0;
+  const tick = () => {
+    const elapsedSec = (performance.now() - t0.current) / 1000;
+    const value = (data?.baseTotal ?? 0) + (data?.perSecondRate ?? 0) * elapsedSec;
+    setDisplay(value);
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+  const onVis = () => { t0.current = performance.now(); };
+  document.addEventListener('visibilitychange', onVis);
+  return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); };
+}, [data]);
+```
+
+## 테스트 전략
+- 단위: API 핸들러가 최신 1건을 정확히 반환하는지(mock Supabase) 테스트. 숫자 파싱 정밀도 검증(큰 정수 처리).
+- 통합: React Query 훅이 로컬 캐시 복구/갱신 동작하는지 테스트.
+- E2E: 탭 비활성/활성 전환 시 시각적 점프 없이 연속 값이 표시되는지(Playwright). 네트워크 실패 후 재시도 및 캐시 복구 확인.
+- 성능: 모바일 저사양에서 rAF 60fps 유지, 메인 스레드 블로킹 < 50ms 프레임.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z

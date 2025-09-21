@@ -1,0 +1,67 @@
+# 1인당 부담 금액 실시간 계산/표시
+
+**Task ID:** T-005
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 6/10
+**Urgency:** 8/10
+**Dependencies:** T-004
+
+## Description
+
+# 목적
+총부채와 인구수를 기반으로 1인당 부담 금액을 rAF 카운터와 동기화해 실시간으로 표시한다.
+
+## 요구사항
+- 기본 인구수 50,000,000명(설정 가능, 로컬 저장).
+- 총부채와 동일한 타이밍으로 계산되어 프레임 드리프트 없이 갱신.
+- 천단위 구분/축약 표기(예: 1.23조) 지원, 반올림 정책 일관.
+- 접근성: 스크린리더용 라이브 영역(aria-live=polite)로 중요 변경 알림.
+
+## 구현 상세(설계/라이브러리)
+- 상태: React Query의 `debt-state` 데이터 사용, 인구수는 컴포넌트 로컬 상태+localStorage(`populationPref`).
+- 포맷터: 한국어 표기 `Intl.NumberFormat('ko-KR')` + 축약 유틸(조/경 단위 간략 표기).
+- 동기화: T-003의 rAF 루프에서 계산된 총부채 표시 값으로 파생 상태(derived state) 계산.
+- UI: `shadcn/ui` 카드 컴포넌트로 별도 카드 구현, 입력 컨트롤(NumberInput/Slider) 제공.
+
+## 의사코드
+```ts
+function formatCompactKR(n: number) {
+  const units = [ { v: 1e16, s: '경' }, { v: 1e12, s: '조' }, { v: 1e8, s: '억' } ];
+  for (const u of units) if (Math.abs(n) >= u.v) return `${(n / u.v).toFixed(2)}${u.s}`;
+  return new Intl.NumberFormat('ko-KR').format(Math.round(n));
+}
+
+// usePerCapita.ts
+export function usePerCapita(displayTotal: number) {
+  const [population, setPopulation] = useState(() => Number(localStorage.getItem('populationPref')) || 50000000);
+  useEffect(() => { localStorage.setItem('populationPref', String(population)); }, [population]);
+  const perCapita = population > 0 ? displayTotal / population : 0;
+  return { population, setPopulation, perCapita };
+}
+
+// Component
+const { data } = useDebtState();
+const [displayTotal, setDisplay] = useState(0);
+// displayTotal은 T-004 통합 로직으로 갱신됨
+const { population, setPopulation, perCapita } = usePerCapita(displayTotal);
+return (
+  <Card aria-live="polite">
+    <CardHeader>1인당 부담</CardHeader>
+    <CardContent>
+      <div>{formatCompactKR(perCapita)}원</div>
+      <NumberInput value={population} onChange={(v) => setPopulation(v)} />
+    </CardContent>
+  </Card>
+);
+```
+
+## 테스트 전략
+- 단위: 경계값(인구 0, 1, 5천만, 1억)에서 계산 정확성. 반올림/축약 표기 스냅샷.
+- 접근성: aria-live가 큰 변화(예: 100만원 단위 변화)에서만 읽히도록 debounce.
+- E2E: 인구수 변경 시 즉시 재계산, 새로고침 후 설정 유지 확인. 높은 총액에서 부동소수 오차 없는지 시각 확인.
+
+---
+
+**Created:** 2025-09-20T10:07:58.298Z
+**Updated:** 2025-09-20T10:07:58.298Z
