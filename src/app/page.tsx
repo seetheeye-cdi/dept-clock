@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -8,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
-import { ArrowUp, Clock3, PieChart, Share2 } from 'lucide-react';
+import { ArrowUp, Clock3, Loader2, PieChart, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,7 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 import type { DebtState } from '@/features/debt/types';
+import { useDebtState } from '@/features/debt/hooks/use-debt-state';
+import { useDebtStream } from '@/features/debt/hooks/use-debt-stream';
 
 const STATIC_DEBT_STATE: DebtState = {
   baseTotal: 1_175_200_000_000_000,
@@ -31,6 +35,14 @@ const STATIC_GDP_TOTAL = 2_550_325_000_000_000;
 const STATIC_ANNUAL_INTEREST_RATE = 0.028;
 const SECONDS_PER_DAY = 86_400;
 const DEFAULT_POPULATION = 50_000_000;
+
+type StatusVariant = 'info' | 'warning' | 'error';
+
+type StatusDescriptor = {
+  variant: StatusVariant;
+  message: string;
+  allowRetry?: boolean;
+};
 
 const formatNumber = new Intl.NumberFormat('ko-KR');
 const formatPerCapitaNumber = new Intl.NumberFormat('ko-KR', {
@@ -48,10 +60,18 @@ const getNow = () =>
   typeof performance !== 'undefined' ? performance.now() : Date.now();
 
 export default function Home() {
-  const debtState = STATIC_DEBT_STATE;
-  const population = debtState.population > 0 ? debtState.population : DEFAULT_POPULATION;
-  const [displayedDebt, setDisplayedDebt] = useState(debtState.baseTotal);
-  const [perCapitaDebt, setPerCapitaDebt] = useState(debtState.baseTotal / population);
+  const { data, isPending, isError, refetch } = useDebtState();
+  useDebtStream(!isError);
+
+  const hasLiveData = Boolean(data);
+  const debtState = data ?? STATIC_DEBT_STATE;
+  const population =
+    debtState.population > 0 ? debtState.population : DEFAULT_POPULATION;
+  const [displayedDebt, setDisplayedDebt] = useState(() => debtState.baseTotal);
+  const [perCapitaDebt, setPerCapitaDebt] = useState(
+    () => debtState.baseTotal / population,
+  );
+  const [isSharing, setIsSharing] = useState(false);
 
   const baselineRef = useRef({
     baseTotal: debtState.baseTotal,
@@ -72,12 +92,17 @@ export default function Home() {
     setPerCapitaDebt(debtState.baseTotal / population);
 
     const tick = () => {
-      const { baseTotal, perSecondRate, population, anchorTime } =
-        baselineRef.current;
+      const {
+        baseTotal,
+        perSecondRate,
+        population: statePopulation,
+        anchorTime,
+      } = baselineRef.current;
 
       const elapsedSeconds = (getNow() - anchorTime) / 1000;
       const currentTotal = baseTotal + perSecondRate * elapsedSeconds;
-      const denominator = population > 0 ? population : DEFAULT_POPULATION;
+      const denominator =
+        statePopulation > 0 ? statePopulation : DEFAULT_POPULATION;
 
       setDisplayedDebt(currentTotal);
       setPerCapitaDebt(currentTotal / denominator);
@@ -88,8 +113,12 @@ export default function Home() {
     frameRef.current = requestAnimationFrame(tick);
 
     const handleVisibilityChange = () => {
-      const { baseTotal, perSecondRate, population, anchorTime } =
-        baselineRef.current;
+      const {
+        baseTotal,
+        perSecondRate,
+        population: statePopulation,
+        anchorTime,
+      } = baselineRef.current;
       const now = getNow();
       const elapsedSeconds = (now - anchorTime) / 1000;
       const currentTotal = baseTotal + perSecondRate * elapsedSeconds;
@@ -97,7 +126,7 @@ export default function Home() {
       baselineRef.current = {
         baseTotal: currentTotal,
         perSecondRate,
-        population,
+        population: statePopulation,
         anchorTime: now,
       };
     };
@@ -111,6 +140,37 @@ export default function Home() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [debtState.baseTotal, debtState.perSecondRate, population]);
+
+  const statusInfo = useMemo<StatusDescriptor | null>(() => {
+    if (isError) {
+      return {
+        variant: 'error',
+        message: '실시간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+        allowRetry: true,
+      };
+    }
+
+    if (isPending) {
+      return {
+        variant: 'info',
+        message: '실시간 데이터를 불러오는 중입니다...',
+      };
+    }
+
+    if (!hasLiveData) {
+      return {
+        variant: 'warning',
+        message: '실시간 데이터가 준비되지 않아 예시 데이터를 보여드리고 있습니다.',
+        allowRetry: true,
+      };
+    }
+
+    return null;
+  }, [hasLiveData, isError, isPending]);
+
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   const formattedTotalDebt = useMemo(
     () => formatNumber.format(Math.round(displayedDebt)),
@@ -165,10 +225,74 @@ export default function Home() {
     [population],
   );
 
+  const handleShare = useCallback(async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const shareUrl = window.location.href;
+    const shareTitle = '국가부채시계';
+    const shareText = `지금 국가부채는 ${formattedTotalDebt}원, 1인당 부담은 ${formattedPerCapita}입니다.`;
+
+    try {
+      setIsSharing(true);
+
+      if (
+        typeof navigator.share === 'function' &&
+        (!navigator.canShare || navigator.canShare({ url: shareUrl, title: shareTitle, text: shareText }))
+      ) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast({
+          title: '공유 완료',
+          description: '친구와 가족에게 현실을 알렸어요.',
+        });
+        return;
+      }
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: '링크를 복사했어요',
+          description: '원하는 곳에 붙여넣어 공유해주세요.',
+        });
+        return;
+      }
+
+      toast({
+        variant: 'destructive',
+        title: '공유 기능을 사용할 수 없어요',
+        description: '주소창의 링크를 직접 복사해 공유해주세요.',
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
+      toast({
+        variant: 'destructive',
+        title: '공유에 실패했습니다',
+        description: '네트워크 상태를 확인하고 다시 시도해주세요.',
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  }, [formattedPerCapita, formattedTotalDebt]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground font-sans">
       <Header />
       <main className="flex flex-1 flex-col items-center justify-center gap-12 px-4 pb-12 pt-8 md:px-8">
+        {statusInfo ? (
+          <StatusBanner
+            variant={statusInfo.variant}
+            message={statusInfo.message}
+            onRetry={statusInfo.allowRetry ? handleRetry : undefined}
+          />
+        ) : null}
         <HeroSection
           totalDebt={formattedTotalDebt}
           perCapitaDebt={formattedPerCapita}
@@ -176,7 +300,7 @@ export default function Home() {
           perCapitaDailyIncrease={formattedPerCapitaDailyIncrease}
           populationLabel={formattedPopulation}
         />
-        <ActionSection />
+        <ActionSection onShare={handleShare} isSharing={isSharing} />
         <InfoGrid
           dailyChange={formattedDailyChange}
           gdpRatio={formattedGdpRatio}
@@ -322,7 +446,50 @@ function PerCapitaDebtCard({
   );
 }
 
-function ActionSection() {
+type StatusBannerProps = {
+  variant: StatusVariant;
+  message: string;
+  onRetry?: () => void;
+};
+
+const STATUS_STYLE_MAP: Record<StatusVariant, string> = {
+  info: 'border border-primary/20 bg-primary/10 text-primary',
+  warning: 'border border-amber-200 bg-amber-50 text-amber-900',
+  error: 'border border-destructive/40 bg-destructive/10 text-destructive',
+};
+
+function StatusBanner({ variant, message, onRetry }: StatusBannerProps) {
+  const ariaLive = variant === 'error' ? 'assertive' : 'polite';
+  const role = variant === 'error' ? 'alert' : 'status';
+
+  return (
+    <div
+      role={role}
+      aria-live={ariaLive}
+      className={`flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${STATUS_STYLE_MAP[variant]}`}
+    >
+      <span className="flex-1 text-left">{message}</span>
+      {onRetry ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onRetry}
+          className="whitespace-nowrap"
+        >
+          다시 시도
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+type ActionSectionProps = {
+  onShare: () => void;
+  isSharing: boolean;
+};
+
+function ActionSection({ onShare, isSharing }: ActionSectionProps) {
   return (
     <section className="flex w-full max-w-5xl flex-col items-center gap-6 text-center">
       <div className="space-y-2">
@@ -332,11 +499,19 @@ function ActionSection() {
         </p>
       </div>
       <Button
+        type="button"
         size="lg"
         className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+        onClick={onShare}
+        disabled={isSharing}
+        aria-busy={isSharing}
       >
-        <Share2 className="h-5 w-5" />
-        공유하기
+        {isSharing ? (
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+        ) : (
+          <Share2 className="h-5 w-5" aria-hidden />
+        )}
+        {isSharing ? '공유 준비중...' : '공유하기'}
       </Button>
     </section>
   );
