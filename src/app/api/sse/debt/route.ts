@@ -80,11 +80,17 @@ export async function GET() {
               table: 'debt_state',
             },
             (payload) => {
-              const currentRow = (payload.new ?? payload.record ?? {}) as Record<
+              const newRow = (payload.new ?? undefined) as
+                | Record<string, unknown>
+                | undefined;
+              const oldRow = (payload.old ?? undefined) as
+                | Record<string, unknown>
+                | undefined;
+              const currentRow = (newRow ?? oldRow ?? {}) as Record<
                 string,
                 unknown
               >;
-              const previousRow = (payload.old ?? payload.record ?? {}) as Record<
+              const previousRow = (oldRow ?? newRow ?? {}) as Record<
                 string,
                 unknown
               >;
