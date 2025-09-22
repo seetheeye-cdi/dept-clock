@@ -1,46 +1,46 @@
 {
   "totalCount": 10,
-  "downloadedAt": "2025-09-20T10:20:03.158Z",
+  "downloadedAt": "2025-09-22T04:40:30.982Z",
   "tasks": [
     {
       "taskId": "T-001",
       "summary": "애플리케이션의 전체적인 디자인 아이덴티티를 확립하기 위해 컬러 팔레트와 타이포그래피를 Tailwind CSS 설정 파일에 정의합니다.",
-      "status": "COMPLETED",
+      "status": "DONE",
       "importance": "MUST",
       "complexity": 8,
       "urgency": 10,
       "createdAt": "2025-09-20T10:00:21.386Z",
-      "updatedAt": "2025-09-20T10:00:21.386Z"
+      "updatedAt": "2025-09-20T10:49:12.847Z"
     },
     {
       "taskId": "T-002",
       "summary": "실시간 데이터 연동 없이, 정의된 디자인 시스템을 기반으로 국가부채 시계의 핵심 랜딩 페이지 UI를 `shadcn/ui`와 `lucide-react`를 사용하여 정적으로 구현합니다.",
-      "status": "COMPLETED",
+      "status": "DONE",
       "importance": "MUST",
       "complexity": 8,
       "urgency": 9,
       "createdAt": "2025-09-20T10:00:21.386Z",
-      "updatedAt": "2025-09-20T10:00:21.386Z"
+      "updatedAt": "2025-09-20T12:34:01.954Z"
     },
     {
       "taskId": "T-003",
       "summary": "메인 페이지의 핵심 기능인 실시간 숫자 카운터를 순수 클라이언트 사이드 로직과 `requestAnimationFrame`을 사용하여 구현합니다. 서버 데이터 없이 목업(mock) 데이터를 기반으로 동작하도록 개발합니다.",
-      "status": "COMPLETED",
+      "status": "DONE",
       "importance": "MUST",
       "complexity": 8,
       "urgency": 8,
       "createdAt": "2025-09-20T10:00:21.386Z",
-      "updatedAt": "2025-09-20T10:00:21.386Z"
+      "updatedAt": "2025-09-20T10:49:15.549Z"
     },
     {
       "taskId": "T-004",
       "summary": "실시간 부채 카운터 데이터 연동( Supabase → API → 프론트 통합 )",
-      "status": "COMPLETED",
+      "status": "DONE",
       "importance": "MUST",
       "complexity": 7,
       "urgency": 10,
       "createdAt": "2025-09-20T10:07:58.298Z",
-      "updatedAt": "2025-09-20T10:07:58.298Z"
+      "updatedAt": "2025-09-20T12:34:02.836Z"
     },
     {
       "taskId": "T-005",
@@ -65,7 +65,7 @@
     {
       "taskId": "T-007",
       "summary": "부채 데이터 SSE 실시간 반영(속도 변경/재보정)",
-      "status": "COMPLETED",
+      "status": "BACKLOG",
       "importance": "MUST",
       "complexity": 8,
       "urgency": 9,

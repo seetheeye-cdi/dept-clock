@@ -1,7 +1,7 @@
 # 부채 데이터 SSE 실시간 반영(속도 변경/재보정)
 
 **Task ID:** T-007
-**Status:** COMPLETED
+**Status:** BACKLOG
 **Importance:** MUST
 **Complexity:** 8/10
 **Urgency:** 9/10

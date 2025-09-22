@@ -15,3 +15,5 @@ For every request:
     - Following documented guidelines
     - Making decisions or generating content
 
+
+

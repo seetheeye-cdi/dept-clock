@@ -60,6 +60,7 @@ export function useDebtState() {
     queryFn: fetchDebtState,
     staleTime: 5_000,
     retry: 1,
+    refetchInterval: 60_000,
     initialData: readCache,
   });
 }

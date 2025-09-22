@@ -1,7 +1,7 @@
 # 애플리케이션의 전체적인 디자인 아이덴티티를 확립하기 위해 컬러 팔레트와 타이포그래피를 Tailwind CSS 설정 파일에 정의합니다.
 
 **Task ID:** T-001
-**Status:** COMPLETED
+**Status:** DONE
 **Importance:** MUST
 **Complexity:** 8/10
 **Urgency:** 10/10
@@ -51,4 +51,4 @@ MUST Guidelines:
 ---
 
 **Created:** 2025-09-20T10:00:21.386Z
-**Updated:** 2025-09-20T10:00:21.386Z
+**Updated:** 2025-09-20T10:49:12.847Z

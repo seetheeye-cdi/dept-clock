@@ -1,0 +1,87 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbbf24;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Pattern overlay -->
+  <g opacity="0.1">
+    <pattern id="diagonalStripe" patternUnits="userSpaceOnUse" width="100" height="100">
+      <rect width="50" height="100" fill="white" opacity="0.05"/>
+    </pattern>
+    <rect width="1200" height="630" fill="url(#diagonalStripe)" transform="rotate(45 600 315)"/>
+  </g>
+  
+  <!-- Main content -->
+  <g text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+    <!-- 충격 문구 -->
+    <text x="600" y="80" font-size="42" font-weight="bold" fill="#ef4444">
+      💸 실시간 증가중 💸
+    </text>
+    
+    <!-- 메인 제목 -->
+    <text x="600" y="140" font-size="36" fill="white" opacity="0.9">
+      대한민국 총 부채
+    </text>
+    
+    <!-- 메인 금액 -->
+    <text x="600" y="250" font-size="120" font-weight="bold" fill="url(#textGradient)" filter="url(#glow)">
+      6,222조원
+    </text>
+    
+    <!-- 통계 정보 -->
+    <g font-size="36">
+      <!-- 1인당 부채 -->
+      <g transform="translate(400, 350)">
+        <text y="0" font-size="48" font-weight="bold" fill="#fbbf24">1.2억원</text>
+        <text y="35" font-size="28" fill="white" opacity="0.8">1인당 부채</text>
+      </g>
+      
+      <!-- 초당 증가 -->
+      <g transform="translate(800, 350)">
+        <text y="0" font-size="48" font-weight="bold" fill="#ef4444">790만원</text>
+        <text y="35" font-size="28" fill="white" opacity="0.8">초당 증가</text>
+      </g>
+    </g>
+    
+    <!-- 부채 구성 -->
+    <g transform="translate(600, 470)" font-size="28" fill="white">
+      <rect x="-200" y="-30" width="400" height="80" rx="16" fill="rgba(0,0,0,0.4)"/>
+      <text x="-120" y="10">
+        <tspan fill="#60a5fa">● </tspan>정부 1,141조
+      </text>
+      <text x="0" y="10">
+        <tspan fill="#a78bfa">● </tspan>기업 2,798조
+      </text>
+      <text x="120" y="10">
+        <tspan fill="#f472b6">● </tspan>가계 2,283조
+      </text>
+    </g>
+    
+    <!-- 경고 메시지 -->
+    <text x="600" y="550" font-size="32" font-weight="bold" fill="#fbbf24">
+      🚨 4인 가구당 5억원의 빚 🚨
+    </text>
+    
+    <!-- URL -->
+    <text x="600" y="600" font-size="24" fill="white" opacity="0.7">
+      dept-clock.vercel.app
+    </text>
+  </g>
+</svg>

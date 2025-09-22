@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      margin: 0;
+      width: 1200px;
+      height: 630px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 35px,
+        rgba(255,255,255,.01) 35px,
+        rgba(255,255,255,.01) 70px
+      );
+    }
+    .container {
+      text-align: center;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    .shock {
+      font-size: 42px;
+      font-weight: bold;
+      color: #ef4444;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .subtitle {
+      font-size: 36px;
+      opacity: 0.9;
+    }
+    .amount {
+      font-size: 120px;
+      font-weight: bold;
+      letter-spacing: -4px;
+      background: linear-gradient(to bottom, #ffffff, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(251, 191, 36, 0.5);
+      margin: 20px 0;
+    }
+    .stats {
+      display: flex;
+      gap: 80px;
+      margin-top: 20px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      font-size: 28px;
+      opacity: 0.8;
+    }
+    .per-capita { color: #fbbf24; }
+    .per-second { color: #ef4444; }
+    .breakdown {
+      display: flex;
+      gap: 40px;
+      padding: 20px 40px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 16px;
+      font-size: 28px;
+      margin-top: 20px;
+    }
+    .breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .warning {
+      font-size: 32px;
+      color: #fbbf24;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    .url {
+      position: absolute;
+      bottom: 30px;
+      font-size: 24px;
+      opacity: 0.7;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="pattern"></div>
+  <div class="container">
+    <div class="shock">💸 실시간 증가중 💸</div>
+    <div>
+      <div class="subtitle">대한민국 총 부채</div>
+      <div class="amount">6,222조원</div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value per-capita">1.2억원</div>
+        <div class="stat-label">1인당 부채</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value per-second">790만원</div>
+        <div class="stat-label">초당 증가</div>
+      </div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">
+        <span style="color: #60a5fa">●</span>
+        <span>정부 1,141조</span>
+      </div>
+      <div class="breakdown-item">
+        <span style="color: #a78bfa">●</span>
+        <span>기업 2,798조</span>
+      </div>
+      <div class="breakdown-item">
+        <span style="color: #f472b6">●</span>
+        <span>가계 2,283조</span>
+      </div>
+    </div>
+    <div class="warning">🚨 4인 가구당 5억원의 빚 🚨</div>
+  </div>
+  <div class="url">dept-clock.vercel.app</div>
+</body>
+</html>
